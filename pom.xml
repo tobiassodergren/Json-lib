@@ -5,10 +5,10 @@
 
    <modelVersion>4.0.0</modelVersion>
    <groupId>net.sf.json-lib</groupId>
-   <artifactId>json-lib</artifactId>
+   <artifactId>json-lib-im</artifactId>
    <packaging>jar</packaging>
    <version>2.4.1</version>
-   <name>json-lib</name>
+   <name>json-lib-im</name>
 
    <url>http://json-lib.sourceforge.net</url>
 
