@@ -29,7 +29,6 @@ import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Elements;
 import nu.xom.Node;
-import nu.xom.ProcessingInstruction;
 import nu.xom.Serializer;
 import nu.xom.Text;
 import org.apache.commons.lang.ArrayUtils;
@@ -740,7 +739,7 @@ public class XMLSerializer {
 
       if( childCount == elementCount ){
          if( elementCount == 0 ){
-            return true;
+            return false;
          }
          if( elementCount == 1 ){
             if( skipWhitespace && element.getChild( 0 ) instanceof Text ){
