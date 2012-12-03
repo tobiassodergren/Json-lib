@@ -1,5 +1,5 @@
 #!/bin/sh
-VERSION="2.4.3"
+VERSION="2.4.4"
 GROUPID="net.sf.json-lib"
 ARTIFACTID="json-lib-im"
 REPO_URL="http://repository.infomaker.se/content/repositories/thirdparty"

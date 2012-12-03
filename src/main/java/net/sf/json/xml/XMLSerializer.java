@@ -764,6 +764,9 @@ public class XMLSerializer {
 
    private void insertRootProcessInstructions( Document doc, JSONObject jsonObject ) {
       final JSONObject rootInstructions = (JSONObject) jsonObject.get( PROCESSING_INSTRUCTION_KEY + "root" );
+      if (rootInstructions == null) {
+         return;
+      }
       final JSONArray names = rootInstructions.names();
       for( int i = 0; i < names.size(); i++ ){
          String name = (String) names.get( i );

@@ -31,8 +31,6 @@ public class TestIdmlParsing extends XMLTestCase {
    public void test_should_parse_2nd_document() throws IOException, ParserConfigurationException, SAXException {
 
       final XMLSerializer xmlSerializer = getXmlSerializer();
-      xmlSerializer.setKeepProcessingInstructions( true );
-      xmlSerializer.setHandleEmptyElementsAsNull( false );
 
       String fixture = toString( "net/sf/json/xml/idml_document2.idms" );
 
@@ -54,6 +52,8 @@ public class TestIdmlParsing extends XMLTestCase {
       xmlSerializer.setTypeHintsEnabled( false );
       xmlSerializer.setTypeHintsCompatibility( false );
       xmlSerializer.setRootName( "Document" );
+      xmlSerializer.setKeepProcessingInstructions( true );
+      xmlSerializer.setHandleEmptyElementsAsNull( false );
       return xmlSerializer;
    }
 

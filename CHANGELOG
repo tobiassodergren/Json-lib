@@ -1,3 +1,7 @@
+im-2.4.4
+========
+Fixed NPE in XMLSerializer->insertRootProcessInstructions()
+
 im-2.4.3
 ========
 Handing processing instructions
