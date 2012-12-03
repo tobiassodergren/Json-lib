@@ -1,3 +1,7 @@
+im-2.4.3
+========
+Handing processing instructions
+
 im-2.4.2
 ========
 Fixed bug where empty element was considered being an array, hence gave NPE when the non-existing children were being processed.

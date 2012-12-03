@@ -23,33 +23,27 @@ public class TestIdmlParsing extends XMLTestCase {
       JSON json = xmlSerializer.read( fixture );
       final String result = xmlSerializer.write( json );
 
-      final Diff diff = compareXML( stripWhiteSpace( fixture ), stripWhiteSpace( result ));
-
-//      System.out.println(stripWhiteSpace( fixture ));
-//      System.out.println(stripWhiteSpace( result ));
-//      System.out.println( "json = " + json.toString(2) );
+      final Diff diff = compareXML( stripWhiteSpace( fixture ), stripWhiteSpace( result ) );
 
       assertTrue( "Found difference: " + diff.toString(), diff.identical() );
    }
 
-/*   public void test_should_parse_2nd_document() throws IOException, ParserConfigurationException, SAXException {
+   public void test_should_parse_2nd_document() throws IOException, ParserConfigurationException, SAXException {
 
       final XMLSerializer xmlSerializer = getXmlSerializer();
+      xmlSerializer.setKeepProcessingInstructions( true );
+      xmlSerializer.setHandleEmptyElementsAsNull( false );
 
       String fixture = toString( "net/sf/json/xml/idml_document2.idms" );
 
       JSON json = xmlSerializer.read( fixture );
       final String result = xmlSerializer.write( json );
 
-      final Diff diff = compareXML( stripWhiteSpace( fixture ), stripWhiteSpace( result ));
-
-//      System.out.println(stripWhiteSpace( fixture ));
-//      System.out.println(stripWhiteSpace( result ));
-//      System.out.println( "json = " + json.toString(2) );
+      final Diff diff = compareXML( stripWhiteSpace( fixture ), stripWhiteSpace( result ) );
 
       assertTrue( "Found difference: " + diff.toString(), diff.identical() );
 
-   } */
+   }
 
    private XMLSerializer getXmlSerializer() {
       final XMLSerializer xmlSerializer = new XMLSerializer();

@@ -29,6 +29,7 @@ import nu.xom.Document;
 import nu.xom.Element;
 import nu.xom.Elements;
 import nu.xom.Node;
+import nu.xom.ProcessingInstruction;
 import nu.xom.Serializer;
 import nu.xom.Text;
 import org.apache.commons.lang.ArrayUtils;
@@ -47,6 +48,7 @@ import java.io.OutputStream;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -82,6 +84,9 @@ public class XMLSerializer {
    private static final String[] EMPTY_ARRAY = new String[0];
    private static final String JSON_PREFIX = "json_";
    private static final Log log = LogFactory.getLog( XMLSerializer.class );
+   public static final String PROCESSING_INSTRUCTION_KEY = "_pi_";
+
+   private int processingInstructionIndex;
 
    /**
     * the name for an JSONArray Element
@@ -156,6 +161,14 @@ public class XMLSerializer {
     * flag for if array name should be kept in JSON data
     */
    private boolean keepArrayName;
+   /**
+    * Flag for if processing instructions should be included in JSON
+    */
+   private boolean keepProcessingInstructions;
+   /**
+    * Flag for if empty elements should be null
+    */
+   private boolean handleEmptyElementAsNull;
 
    /**
     * Creates a new XMLSerializer with default options.<br>
@@ -189,7 +202,9 @@ public class XMLSerializer {
       setKeepCData( false );
       setEscapeLowerChars( false );
       setKeepArrayName( false );
+      setHandleEmptyElementsAsNull( true );
    }
+
 
    /**
     * Adds a namespace declaration to the root element.
@@ -353,6 +368,7 @@ public class XMLSerializer {
     *                       I/O or format reasons.
     */
    public JSON read( String xml ) {
+      processingInstructionIndex = 0;
       JSON json = null;
       try{
          Document doc = new Builder().build( new StringReader( xml ) );
@@ -374,12 +390,50 @@ public class XMLSerializer {
                json = new JSONObject().element( key, json );
             }
          }
+         if( keepProcessingInstructions ){
+            processRootProcessingInstructions( json, getProcessingInstructionsFromDocument( doc ) );
+         }
       }catch( JSONException jsone ){
          throw jsone;
       }catch( Exception e ){
          throw new JSONException( e );
       }
       return json;
+   }
+
+   private void processRootProcessingInstructions( JSON json, List processingInstructions ) {
+      if( json == null || !(json instanceof JSONObject) || processingInstructions.size() == 0 ){
+         return;
+      }
+
+      JSONObject rootKey = new JSONObject();
+
+      addProcessingInstructionToObject( rootKey, processingInstructions );
+
+      ((JSONObject) json).put( PROCESSING_INSTRUCTION_KEY + "root", rootKey );
+   }
+
+   private void addProcessingInstructionToObject( JSONObject jsonObject, List processingInstructions ) {
+      for( int i = 0; i < processingInstructions.size(); i++ ){
+         ProcessingInstruction processingInstruction = (ProcessingInstruction) processingInstructions.get( i );
+         jsonObject.put( prefixProcessingInstruction( processingInstruction.getTarget() ), processingInstruction.getValue() );
+      }
+   }
+
+   private String prefixProcessingInstruction( String target ) {
+      processingInstructionIndex++;
+      return PROCESSING_INSTRUCTION_KEY + processingInstructionIndex + "__" + target;
+   }
+
+   private List getProcessingInstructionsFromDocument( Document doc ) {
+      List result = new ArrayList();
+      for( int i = 0; i < doc.getChildCount(); i++ ){
+         if( doc.getChild( i ) instanceof ProcessingInstruction ){
+            result.add( doc.getChild( i ) );
+         }
+      }
+
+      return result;
    }
 
    /**
@@ -556,6 +610,14 @@ public class XMLSerializer {
       isKeepCData = keepCData;
    }
 
+   public void setKeepProcessingInstructions( boolean keep ) {
+      this.keepProcessingInstructions = keep;
+   }
+
+   public void setHandleEmptyElementsAsNull( boolean handleAsNull ) {
+      handleEmptyElementAsNull = handleAsNull;
+   }
+
    /**
     * Sets whether this serializer should escape characters lower than ' ' in texts.
     *
@@ -693,7 +755,24 @@ public class XMLSerializer {
                   expandableProperties, true );
          }
          Document doc = new Document( root );
+         if( keepProcessingInstructions ){
+            insertRootProcessInstructions( doc, jsonObject );
+         }
          return writeDocument( doc, encoding );
+      }
+   }
+
+   private void insertRootProcessInstructions( Document doc, JSONObject jsonObject ) {
+      final JSONObject rootInstructions = (JSONObject) jsonObject.get( PROCESSING_INSTRUCTION_KEY + "root" );
+      final JSONArray names = rootInstructions.names();
+      for( int i = 0; i < names.size(); i++ ){
+         String name = (String) names.get( i );
+         if( name.startsWith( PROCESSING_INSTRUCTION_KEY ) ){
+            final int keyNamePosition = name.lastIndexOf( "__" );
+            String target = name.substring( keyNamePosition + 2 );
+            final ProcessingInstruction processingInstruction = newProcessingInstruction( target, (String) rootInstructions.get( name ) );
+            doc.insertChild( processingInstruction, i );
+         }
       }
    }
 
@@ -892,7 +971,7 @@ public class XMLSerializer {
    private boolean isNullObject( Element element ) {
       if( element.getChildCount() == 0 ){
          if( element.getAttributeCount() == 0 ){
-            return true;
+            return handleEmptyElementAsNull;
          }else if( element.getAttribute( addJsonPrefix( "null" ) ) != null ){
             return true;
          }else if( element.getAttributeCount() == 1
@@ -1086,6 +1165,18 @@ public class XMLSerializer {
             }else{
                root.appendChild( String.valueOf( value ) );
             }
+         }else if( name.startsWith( PROCESSING_INSTRUCTION_KEY ) ){
+            if( !keepProcessingInstructions ){
+               continue;
+            }
+            final int keyNamePosition = name.lastIndexOf( "__" );
+            if( keyNamePosition < 0 ){
+               // Root instructions are handled elsewhere
+               continue;
+            }
+            String target = name.substring( keyNamePosition + 2);
+            final ProcessingInstruction processingInstruction = newProcessingInstruction( target, (String) value );
+            root.appendChild( processingInstruction );
          }else if( value instanceof JSONArray
                && (((JSONArray) value).isExpandElements() || ArrayUtils.contains(
                expandableProperties, name ) || (isPerformAutoExpansion && canAutoExpand( (JSONArray) value ))) ){
@@ -1113,6 +1204,10 @@ public class XMLSerializer {
          }
       }
       return root;
+   }
+
+   private ProcessingInstruction newProcessingInstruction( String target, String value ) {
+      return new ProcessingInstruction( target, value );
    }
 
    /**
@@ -1228,10 +1323,16 @@ public class XMLSerializer {
             }
          }else if( child instanceof Element ){
             setValue( jsonObject, (Element) child, defaultType );
+         }else if( child instanceof ProcessingInstruction && keepProcessingInstructions ){
+            setOrAccumulateProecessingInstruction( jsonObject, (ProcessingInstruction) child );
          }
       }
 
       return jsonObject;
+   }
+
+   private void setOrAccumulateProecessingInstruction( JSONObject jsonObject, ProcessingInstruction instruction ) {
+      addProcessingInstructionToObject( jsonObject, Arrays.asList( new ProcessingInstruction[]{instruction} ) );
    }
 
    private String removeNamespacePrefix( String name ) {
